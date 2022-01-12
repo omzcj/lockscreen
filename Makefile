@@ -1,3 +1,3 @@
 build:
 	mkdir bin
-	cp src/main bin/lockscreen
+	clang -F /System/Library/PrivateFrameworks -framework login -o bin/lockscreen src/main.c
