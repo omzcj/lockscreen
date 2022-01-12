@@ -1,1 +1,1 @@
-etcdctl --endpoints=zhangchaojie.net:2379 watch mac.lockscreen -- osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}'
+/usr/local/bin/etcdctl --endpoints=zhangchaojie.net:2379 watch mac.lockscreen -- osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}'
