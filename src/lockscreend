@@ -1,2 +1,0 @@
-#!/usr/bin/env sh
-/usr/local/bin/etcdctl --endpoints=zhangchaojie.net:2379 watch mac.lockscreen -- /usr/local/bin/lockscreen
