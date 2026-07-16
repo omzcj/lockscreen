@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - Makefile
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15-intel
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Read and validate version
+        id: version
+        shell: bash
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid VERSION: $version" >&2
+            exit 1
+          fi
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; bump VERSION before changing release inputs." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Validate build
+        run: |
+          make build
+          file bin/lockscreen | grep -F "Mach-O"
+
+      - name: Package source
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          asset="lockscreen-$version.tar.gz"
+          python3 .github/scripts/package_release.py \
+            --name lockscreen \
+            --version "$version" \
+            --output "dist/$asset" \
+            VERSION LICENSE Makefile src
+          (cd dist && shasum -a 256 "$asset" > "$asset.sha256")
+
+      - name: Create GitHub Release
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          asset="lockscreen-$version.tar.gz"
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "dist/$asset" "dist/$asset.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "$version" \
+            --generate-notes
